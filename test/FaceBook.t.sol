@@ -120,7 +120,6 @@ contract TestFaceBook is Test {
         FaceBook.PostInfo memory temp2 = fb.viewPostById(1);
         assertEq(temp2.postPhoto, "TestPost2");
         assertEq(temp2.postBio, "TestPost2");
-        console2.log(temp2.useraddress);
     }
 
     function test_EditPost() public {
@@ -153,5 +152,29 @@ contract TestFaceBook is Test {
         vm.prank(address(2));
         vm.expectRevert();
         fb.editPost(3, "asd", "asd");
+    }
+
+    function test_Friends() public {
+        vm.prank(address(1));
+        fb.createUser("User1", "User1", "User1");
+        vm.prank(address(2));
+        fb.createUser("User2", "User2", "User2");
+        vm.prank(address(3));
+        fb.createUser("User3", "User3", "User3");
+        vm.startPrank(address(1));
+        fb.addFriends(address(2));
+        fb.addFriends(address(3));
+        vm.expectRevert();
+        fb.addFriends(address(4));
+        address[] memory temp = fb.getMyFriends(address(1));
+        assertEq(temp[0], address(2));
+        assertEq(temp[1], address(3));
+        fb.removeFriend(address(2));
+        vm.expectRevert();
+        fb.removeFriend(address(4));
+        address[] memory temp2 = fb.getMyFriends(address(1));
+        assertEq(temp2[0], address(3));
+
+        assertFalse(temp2[0] == address(2));
     }
 }

@@ -29,16 +29,23 @@ contract FaceBook is ERC721URIStorage, Ownable {
 
     address[] private userList;
     mapping(uint256 => PostInfo) private posts;
-    mapping(uint256 => bool) public isPostExist;
+    mapping(uint256 => bool) private isPostExist;
     mapping(address => uint256[]) private myPosts;
     mapping(address => UserInfo) private users;
     mapping(address => address[]) private friendList;
+    mapping(address => mapping(address => bool)) private isFriend;
+
+  
+
+    ////////////////
+    ////External////
+    ////////////////
 
     function createUser(
         string memory _userName,
         string memory _userPhoto,
         string memory _userBio
-    ) public {
+    ) external {
         uint256 _userId = userId.current();
         require(!users[msg.sender].isRegistered, "User already registered");
         require(bytes(_userName).length > 0, "User name cannot be empty");
@@ -55,28 +62,22 @@ contract FaceBook is ERC721URIStorage, Ownable {
         userList.push(msg.sender);
     }
 
-    function editUserNamee(string memory _userName) public {
+    function editUserNamee(string memory _userName) external {
         require(users[msg.sender].isRegistered, "You are not registered");
         require(bytes(_userName).length > 0, "User name cannot be empty");
         users[msg.sender].userName = _userName;
     }
 
-    function editUserPhoto(string memory _userPhoto) public {
+    function editUserPhoto(string memory _userPhoto) external {
         require(users[msg.sender].isRegistered, "You are not registered");
         require(bytes(_userPhoto).length > 0, "User photo cannot be empty");
         users[msg.sender].userPhoto = _userPhoto;
     }
 
-    function editUserBio(string memory _userBio) public {
+    function editUserBio(string memory _userBio) external {
         require(users[msg.sender].isRegistered, "You are not registered");
         require(bytes(_userBio).length > 0, "User bio cannot be empty");
         users[msg.sender].userBio = _userBio;
-    }
-
-    function viewUserInfo(
-        address UserAddress
-    ) public view returns (UserInfo memory) {
-        return users[UserAddress];
     }
 
     function createPost(
@@ -113,6 +114,57 @@ contract FaceBook is ERC721URIStorage, Ownable {
         isPostExist[_id] = false;
     }
 
+    function editPost(
+        uint256 _id,
+        string memory _postPhoto,
+        string memory _postBio
+    ) external {
+        require(isPostExist[_id], "Post id Does not Exist");
+        require(users[msg.sender].isRegistered, "You are not registered");
+        require(posts[_id].useraddress == msg.sender, "This is not Your Post");
+        PostInfo storage temp = posts[_id];
+        temp.postPhoto = _postPhoto;
+        temp.postBio = _postBio;
+    }
+
+    function addFriends(address _address) external {
+        require(users[_address].isRegistered);
+        require(users[msg.sender].isRegistered);
+        isFriend[msg.sender][_address] = true;
+        friendList[msg.sender].push(_address);
+    }
+
+    function removeFriend(address _address) external {
+        require(users[_address].isRegistered);
+        require(users[msg.sender].isRegistered);
+        require(isFriend[msg.sender][_address] == true);
+        address[] storage temp = friendList[msg.sender];
+        for (uint256 i = 0; i < temp.length; i++) {
+            if (temp[i] == _address) {
+                temp[i] = temp[temp.length - 1];
+                temp.pop();
+                break;
+            }
+        }
+    }
+
+    ///////////////
+    ////View///////
+    ///////////////
+
+    function getMyFriends(
+        address _address
+    ) public view returns (address[] memory) {
+        require(users[_address].isRegistered, "User is not registered");
+        return friendList[_address];
+    }
+
+    function viewUserInfo(
+        address UserAddress
+    ) public view returns (UserInfo memory) {
+        return users[UserAddress];
+    }
+
     function viewMyPostId(
         address _address
     ) public view returns (uint256[] memory) {
@@ -136,20 +188,13 @@ contract FaceBook is ERC721URIStorage, Ownable {
 
     function viewPostById(uint256 _id) public view returns (PostInfo memory) {
         require(isPostExist[_id], "Post id Does not Exist");
-
         return posts[_id];
     }
 
-    function editPost(
-        uint256 _id,
-        string memory _postPhoto,
-        string memory _postBio
-    ) public {
-        require(isPostExist[_id], "Post id Does not Exist");
-        require(users[msg.sender].isRegistered, "You are not registered");
-        require(posts[_id].useraddress == msg.sender, "This is not Your Post");
-        PostInfo storage temp = posts[_id];
-        temp.postPhoto = _postPhoto;
-        temp.postBio = _postBio;
+    function chectIffriend(address _frinedAddress) public view returns (bool) {
+        return isFriend[msg.sender][_frinedAddress];
+    }
+      function CheckIfPostExist(uint256 _postId)public view returns(bool){
+        return isPostExist[_postId] ;
     }
 }
