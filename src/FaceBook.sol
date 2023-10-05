@@ -8,12 +8,11 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 contract FaceBook is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private postId;
-    Counters.Counter private userId;
+    uint256 roomId;
 
     constructor() ERC721("FaceBook", "FB") {}
 
     struct UserInfo {
-        uint256 Id;
         address userAddress;
         string userName;
         string userPhoto;
@@ -26,7 +25,16 @@ contract FaceBook is ERC721URIStorage, Ownable {
         string postPhoto;
         string postBio;
     }
-
+    struct MessageRoom {
+        uint256 roomId;
+        address user1;
+        address user2;
+        bool isRoomAvailable;
+    }
+    mapping(uint256 => MessageRoom) private messageRoom;
+    mapping(address => mapping(address => bool)) isRoom;
+    mapping(address => mapping(address => bool)) isRoom2;
+    mapping(uint256 => string[]) private messages;
     address[] private userList;
     mapping(uint256 => PostInfo) private posts;
     mapping(uint256 => bool) private isPostExist;
@@ -34,8 +42,6 @@ contract FaceBook is ERC721URIStorage, Ownable {
     mapping(address => UserInfo) private users;
     mapping(address => address[]) private friendList;
     mapping(address => mapping(address => bool)) private isFriend;
-
-  
 
     ////////////////
     ////External////
@@ -46,12 +52,9 @@ contract FaceBook is ERC721URIStorage, Ownable {
         string memory _userPhoto,
         string memory _userBio
     ) external {
-        uint256 _userId = userId.current();
         require(!users[msg.sender].isRegistered, "User already registered");
         require(bytes(_userName).length > 0, "User name cannot be empty");
-        userId.increment();
         users[msg.sender] = UserInfo(
-            _userId,
             msg.sender,
             _userName,
             _userPhoto,
@@ -128,8 +131,10 @@ contract FaceBook is ERC721URIStorage, Ownable {
     }
 
     function addFriends(address _address) external {
+        require(_address != msg.sender);
         require(users[_address].isRegistered);
         require(users[msg.sender].isRegistered);
+        require(!isFriend[msg.sender][_address]);
         isFriend[msg.sender][_address] = true;
         friendList[msg.sender].push(_address);
     }
@@ -148,9 +153,44 @@ contract FaceBook is ERC721URIStorage, Ownable {
         }
     }
 
+    function create_messageRoom(address _sendAddress) external {
+        require(isFriend[msg.sender][_sendAddress]);
+        require(!isRoom[msg.sender][_sendAddress]);
+        require(!isRoom2[_sendAddress][msg.sender]);
+        isRoom[msg.sender][_sendAddress] = true;
+        isRoom2[_sendAddress][msg.sender] = true;
+        messageRoom[roomId] = MessageRoom(
+            roomId,
+            msg.sender,
+            _sendAddress,
+            true
+        );
+        roomId += 1;
+    }
+
+    function sendMessage(uint256 _roomId, string memory _message) external {
+        require(messageRoom[_roomId].isRoomAvailable, "First Create the Room");
+        require(
+            msg.sender == messageRoom[_roomId].user1 ||
+                msg.sender == messageRoom[_roomId].user2
+        );
+        messages[_roomId].push(_message);
+    }
+
     ///////////////
     ////View///////
     ///////////////
+
+    function viewMessages(
+        uint256 _roomId
+    ) public view returns (string[] memory) {
+        require(messageRoom[_roomId].isRoomAvailable, "First Create the Room");
+        require(
+            msg.sender == messageRoom[_roomId].user1 ||
+                msg.sender == messageRoom[_roomId].user2
+        );
+        return messages[_roomId];
+    }
 
     function getMyFriends(
         address _address
@@ -194,7 +234,8 @@ contract FaceBook is ERC721URIStorage, Ownable {
     function chectIffriend(address _frinedAddress) public view returns (bool) {
         return isFriend[msg.sender][_frinedAddress];
     }
-      function CheckIfPostExist(uint256 _postId)public view returns(bool){
-        return isPostExist[_postId] ;
+
+    function CheckIfPostExist(uint256 _postId) public view returns (bool) {
+        return isPostExist[_postId];
     }
 }
