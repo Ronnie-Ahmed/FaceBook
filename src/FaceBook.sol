@@ -9,6 +9,29 @@ contract FaceBook is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private postId;
     uint256 roomId;
+    mapping(uint256 => MessageRoom) private messageRoom;
+    mapping(address => mapping(address => bool)) isRoom;
+    mapping(address => mapping(address => bool)) isRoom2;
+    mapping(uint256 => string[]) private messages;
+    address[] private userList;
+    mapping(uint256 => PostInfo) private posts;
+    mapping(uint256 => bool) private isPostExist;
+    mapping(address => uint256[]) private myPosts;
+    mapping(address => UserInfo) private users;
+    mapping(address => address[]) private friendList;
+    mapping(address => mapping(address => bool)) private isFriend;
+
+    event CreateUserEvent(
+        address indexed _userAddress,
+        string _userName,
+        string _userPhoto
+    );
+
+    event CreatePostEvent(address indexed _userAddress, uint256 _postId);
+    event DeletePostEvent(address indexed _userAddress, uint256 _postId);
+    event AddFriendEvent(address indexed _user1, address indexed _user2);
+    event RemoveFriendEvent(address indexed _user1, address indexed _user2);
+    event MessageEvent(uint256 _roomId, string _message);
 
     constructor() ERC721("FaceBook", "FB") {}
 
@@ -31,17 +54,6 @@ contract FaceBook is ERC721URIStorage, Ownable {
         address user2;
         bool isRoomAvailable;
     }
-    mapping(uint256 => MessageRoom) private messageRoom;
-    mapping(address => mapping(address => bool)) isRoom;
-    mapping(address => mapping(address => bool)) isRoom2;
-    mapping(uint256 => string[]) private messages;
-    address[] private userList;
-    mapping(uint256 => PostInfo) private posts;
-    mapping(uint256 => bool) private isPostExist;
-    mapping(address => uint256[]) private myPosts;
-    mapping(address => UserInfo) private users;
-    mapping(address => address[]) private friendList;
-    mapping(address => mapping(address => bool)) private isFriend;
 
     ////////////////
     ////External////
@@ -63,6 +75,7 @@ contract FaceBook is ERC721URIStorage, Ownable {
         );
 
         userList.push(msg.sender);
+        emit CreateUserEvent(msg.sender, _userName, _userPhoto);
     }
 
     function editUserNamee(string memory _userName) external {
@@ -95,6 +108,7 @@ contract FaceBook is ERC721URIStorage, Ownable {
         posts[id] = PostInfo(id, msg.sender, _postPhoto, _postBio);
         myPosts[msg.sender].push(id);
         _safeMint(msg.sender, id);
+        emit CreatePostEvent(msg.sender, id);
     }
 
     function deletePost(uint256 _id) external {
@@ -115,6 +129,7 @@ contract FaceBook is ERC721URIStorage, Ownable {
             }
         }
         isPostExist[_id] = false;
+        emit DeletePostEvent(msg.sender, _id);
     }
 
     function editPost(
@@ -137,6 +152,7 @@ contract FaceBook is ERC721URIStorage, Ownable {
         require(!isFriend[msg.sender][_address]);
         isFriend[msg.sender][_address] = true;
         friendList[msg.sender].push(_address);
+        emit AddFriendEvent(msg.sender, _address);
     }
 
     function removeFriend(address _address) external {
@@ -151,6 +167,7 @@ contract FaceBook is ERC721URIStorage, Ownable {
                 break;
             }
         }
+        emit RemoveFriendEvent(msg.sender, _address);
     }
 
     function create_messageRoom(address _sendAddress) external {
@@ -175,6 +192,7 @@ contract FaceBook is ERC721URIStorage, Ownable {
                 msg.sender == messageRoom[_roomId].user2
         );
         messages[_roomId].push(_message);
+        emit MessageEvent(_roomId, _message);
     }
 
     ///////////////
